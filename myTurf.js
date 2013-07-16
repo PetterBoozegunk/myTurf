@@ -76,7 +76,8 @@
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
             },
             setNameAndPort : function () {
-                sys.puts("Choose the name and port for the server. ex: localhost:80 or punk.rock:666");
+                sys.puts("Choose the name and port for the server. ex: development.local:333 or punk.rock:666");
+                sys.puts("Or hit enter/return to use \"localhost:80\"");
                 process.stdin.resume();
                 process.stdin.setEncoding("utf8");
 
