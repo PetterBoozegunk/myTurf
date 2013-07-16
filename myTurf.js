@@ -29,20 +29,20 @@
                 l = jsonstring.length;
 
             for (i = 0; i < l; i += 1) {
-                if (jsonstring[i] === "{") {
+                if ((/[\{\[]/).test(jsonstring[i])) { // start (object || array)
                     indentBy += 1;
-                    newString += "{\n" + util.addSpaces(indentBy);
-                } else if (jsonstring[i] === "}") {
+                    newString += jsonstring[i] + "\n" + util.addSpaces(indentBy);
+                } else if ((/[\}\]]/).test(jsonstring[i])) { // end (object || array)
                     indentBy -= 1;
-                    newString += util.addSpaces(indentBy) + "\n}";
-                } else if (jsonstring[i] === "," && jsonstring[i - 1] === "\"" && jsonstring[parseInt(i + 1, 10)] === "\"") {
+                    newString += "\n" + util.addSpaces(indentBy) + jsonstring[i];
+                } else if (jsonstring[i] === ",") {
                     newString += ",\n" + util.addSpaces(indentBy);
                 } else {
                     newString += jsonstring[i];
                 }
             }
 
-            newString = newString.replace(/((")(:)(["\d]))/g, "$2 $3 $4");
+            newString = newString.replace(/((")(:)(["\d\{\[]))/g, "$2 $3 $4");
 
             return newString;
         }
