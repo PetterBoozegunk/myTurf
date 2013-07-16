@@ -3,7 +3,6 @@
     "use strict";
 
     var util,
-        filedata,
         setup,
         webconfig,
         sys = require("sys"),
@@ -49,10 +48,6 @@
         }
     };
 
-    filedata = {
-        webconfig : '{"hostname":"localhost","port":80}'
-    };
-
     setup = {
         webconfig : {
             load : function (data) {
@@ -72,17 +67,11 @@
                 var options = {
                         encoding: "utf8"
                     },
-                    fileString = filedata.webconfig,
                     dataStr = data.replace(/[\n\r]/g, ""),
-                    hostname = dataStr.split(":")[0],
+                    hostname = dataStr.split(":")[0] || "localhost",
                     port = dataStr.split(":")[1] || 80,
-                    hostnameRe = new RegExp("(\"hostname\":\")(localhost)(\")"),
-                    portRe = new RegExp("(\"port\":)(80)");
-
-                fileString = fileString.replace(hostnameRe, "$1" + hostname + "$3");
-                fileString = fileString.replace(portRe, "$1" + port);
-
-                fileString = util.indentJSON(fileString);
+                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + '}',
+                    fileString = util.indentJSON(webconfigStr);
 
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
             },
