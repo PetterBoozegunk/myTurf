@@ -2,14 +2,20 @@
 (function () {
     "use strict";
 
-    var util,
+    var file,
+        util,
         setup,
         webconfig,
+        server,
         sys = require("sys"),
         path = require("path"),
-        fs = require("fs");
+        fs = require("fs"),
+        http = require("http");
 
     util = {
+        trim : function (str) {
+            return str.toString().replace(/(^\s+|\s+$)/g, "");
+        },
         addSpaces : function (indentBy) {
             var spaces = "    ",
                 spaceString = "",
@@ -23,28 +29,104 @@
             return spaceString;
         },
         indentJSON : function (jsonstring) {
-            var newString = "",
+            var trimString = util.trim(jsonstring),
+                newString = "",
                 indentBy = 0,
                 i,
-                l = jsonstring.length;
+                l = trimString.length;
 
             for (i = 0; i < l; i += 1) {
-                if ((/[\{\[]/).test(jsonstring[i])) { // start (object || array)
+                if ((/[\{\[]/).test(trimString[i])) { // start (object || array)
                     indentBy += 1;
-                    newString += jsonstring[i] + "\n" + util.addSpaces(indentBy);
-                } else if ((/[\}\]]/).test(jsonstring[i])) { // end (object || array)
+                    newString += trimString[i] + "\n" + util.addSpaces(indentBy);
+                } else if ((/[\}\]]/).test(trimString[i])) { // end (object || array)
                     indentBy -= 1;
-                    newString += "\n" + util.addSpaces(indentBy) + jsonstring[i];
-                } else if (jsonstring[i] === ",") {
+                    newString += "\n" + util.addSpaces(indentBy) + trimString[i];
+                } else if (trimString[i] === ",") {
                     newString += ",\n" + util.addSpaces(indentBy);
                 } else {
-                    newString += jsonstring[i];
+                    newString += trimString[i];
                 }
             }
 
             newString = newString.replace(/((")(:)(["\d\{\[]))/g, "$2 $3 $4");
 
             return newString;
+        },
+        indentHTML : function (htmlString) {
+            var trimString = util.trim(htmlString),
+                newString = "",
+                indentBy = 0,
+                i,
+                l = trimString.length;
+
+            for (i = 0; i < l; i += 1) {
+                if ((/>/).test(trimString[i])) { // tag end
+                    indentBy += 1;
+                    newString += trimString[i] + "\n" + util.addSpaces(indentBy);
+                } else if (trimString[Math.round(i + 1)] && (/</).test(trimString[i]) && (/\//).test(trimString[Math.round(i + 1)])) { // start endtag
+                    indentBy -= 1;
+                    newString += "\n" + util.addSpaces(indentBy) + trimString[i];
+
+                    if (indentBy > 0) {
+                        indentBy -= 1;
+                    }
+
+                    newString = newString.replace(/(\n)(\s+)(\n)/g, "$1");
+                } else {
+                    newString += trimString[i];
+                }
+            }
+
+            return newString;
+        }
+    };
+
+    file = {
+        get : function (file, property) {
+            return file[file][property];
+        },
+        "404" : {
+            "head" : "<head><title>404</title></head>",
+            "body" : "<body><h1>404</h1></body>"
+        },
+        types : {
+            "html" : {
+                prestart : "<!DOCTYPE html>\n",
+                start : "<html>",
+                end : "</html>"
+            }
+        },
+        write : function (error) {
+            if (error) {
+                throw error;
+            }
+
+            sys.puts(arguments);
+        },
+        create : function (fileName, fileType) {
+            var options = {
+                    encoding: "utf8"
+                },
+                type = file.types[fileType] || {
+                    prestart : "",
+                    start : "",
+                    end : ""
+                },
+                fileString = type.prestart + util.indentHTML(type.start + file[fileName].head + file[fileName].body + type.end);
+
+            fs.writeFile(fileName + "." + (fileType || "txt"), fileString, options, file.write);
+        }
+    };
+
+    server = {
+        create : function (request, response) {
+            console.log(request + "\n" + response);
+        },
+        addListener : function (webConfig) {
+            http.createServer(server.create).listen(webConfig.port, webConfig.hostname);
+
+            sys.puts("Server Running on http://" + webConfig.hostname + ":" + webConfig.port);
         }
     };
 
@@ -53,7 +135,7 @@
             load : function (data) {
                 webconfig = JSON.parse(data.toString());
 
-                process.abort();
+                server.addListener(webconfig);
             },
             write : function (error) {
                 if (error) {
@@ -70,7 +152,7 @@
                     dataStr = data.replace(/[\n\r]/g, ""),
                     hostname = dataStr.split(":")[0] || "localhost",
                     port = dataStr.split(":")[1] || 80,
-                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + '}',
+                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + ',"defaultfile":"404.htm"}',
                     fileString = util.indentJSON(webconfigStr);
 
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
@@ -103,6 +185,7 @@
             }
         },
         init : function () {
+            file.create("404", "html");
             setup.webconfig.init();
         }
     };
