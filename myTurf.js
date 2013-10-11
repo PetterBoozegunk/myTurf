@@ -87,9 +87,9 @@
 
             for (i = 0; i < l; i += 1) {
                 if ((/>/).test(trimString[i])) { // tag end
-                
+
                     tagName = util.getTagName(trimString, i);
-                    
+
                     if (!tagName || (tagName && !(/^(meta)$/i).test(tagName))) {
                         indentBy += 1;
                     }
@@ -130,11 +130,11 @@
                 doc : "<html><head><meta charset=\"utf-8\"><title>[title]</title></head><body><h1>[h1]</h1></body></html>"
             }
         },
-        write : function (error) {
-            if (error) {
-                throw error;
-            }
-        },
+//        write : function (error) {
+//            if (error) {
+//                throw error;
+//            }
+//        },
         createHTML : function (fileName) {
             var options = {
                     encoding: "utf8"
@@ -147,7 +147,14 @@
 
             fileString = html.doctype + util.indentHTML(fileString);
 
-            fs.writeFile(fileName + ".html", fileString, options, files.write);
+//            fs.writeFile(fileName + ".html", fileString, options, files.write);
+            fs.writeFile(fileName + ".html", fileString, options, function (error) {
+                if (error) {
+                    throw error;
+                }
+
+                sys.puts(fileName + ".html was created");
+            });
         },
         handleExistsError : function (error) {
             var fileNameArray,
@@ -162,7 +169,7 @@
         },
         exists : function (fileName) {
             var filePath = path.join(process.cwd(), fileName + ".html");
-            
+
             fs.readFile(filePath, files.handleExistsError);
         },
         create : function () {
@@ -213,7 +220,7 @@
                     dataStr = data.replace(/[\n\r]/g, ""),
                     hostname = dataStr.split(":")[0] || "localhost",
                     port = dataStr.split(":")[1] || 80,
-                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + ',"defaultfile":"404.htm"}',
+                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + '}',
                     fileString = util.indentJSON(webconfigStr);
 
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
