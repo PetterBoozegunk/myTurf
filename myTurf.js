@@ -2,7 +2,7 @@
 (function () {
     "use strict";
 
-    var file,
+    var files,
         util,
         setup,
         webconfig,
@@ -53,8 +53,33 @@
 
             return newString;
         },
+        getTagName : function (trimString, i) {
+            var j,
+                k,
+                l = trimString.length,
+                tagName = "";
+
+            for (j = i; i > -1; j -= 1) {
+                if ((/</).test(trimString[j])) {
+                    j = parseInt(j + 1, 10);
+                    break;
+                }
+            }
+
+            for (k = j; k < l; k += 1) {
+                if ((/(\s|>|\/)/).test(trimString[k])) {
+                    break;
+                } else {
+                    tagName += trimString[k];
+                }
+
+            }
+
+            return tagName;
+        },
         indentHTML : function (htmlString) {
             var trimString = util.trim(htmlString),
+                tagName,
                 newString = "",
                 indentBy = 0,
                 i,
@@ -62,7 +87,13 @@
 
             for (i = 0; i < l; i += 1) {
                 if ((/>/).test(trimString[i])) { // tag end
-                    indentBy += 1;
+                
+                    tagName = util.getTagName(trimString, i);
+                    
+                    if (!tagName || (tagName && !(/^(meta)$/i).test(tagName))) {
+                        indentBy += 1;
+                    }
+
                     newString += trimString[i] + "\n" + util.addSpaces(indentBy);
                 } else if (trimString[Math.round(i + 1)] && (/</).test(trimString[i]) && (/\//).test(trimString[Math.round(i + 1)])) { // start endtag
                     indentBy -= 1;
@@ -82,40 +113,68 @@
         }
     };
 
-    file = {
-        get : function (file, property) {
-            return file[file][property];
-        },
-        "404" : {
-            "head" : "<head><title>404</title></head>",
-            "body" : "<body><h1>404</h1></body>"
+    files = {
+        pages : {
+            "404" : {
+                "title" : "404",
+                "h1" : "404"
+            },
+            "500" : {
+                "title" : "500",
+                "h1" : "500"
+            }
         },
         types : {
             "html" : {
-                prestart : "<!DOCTYPE html>\n",
-                start : "<html>",
-                end : "</html>"
+                doctype : "<!DOCTYPE html>\n",
+                doc : "<html><head><meta charset=\"utf-8\"><title>[title]</title></head><body><h1>[h1]</h1></body></html>"
             }
         },
         write : function (error) {
             if (error) {
                 throw error;
             }
-
-            sys.puts(arguments);
         },
-        create : function (fileName, fileType) {
+        createHTML : function (fileName) {
             var options = {
                     encoding: "utf8"
                 },
-                type = file.types[fileType] || {
-                    prestart : "",
-                    start : "",
-                    end : ""
-                },
-                fileString = type.prestart + util.indentHTML(type.start + file[fileName].head + file[fileName].body + type.end);
+                html = files.types.html,
+                fileString = html.doc,
+                filePath = path.join(process.cwd(), fileName + ".html");
 
-            fs.writeFile(fileName + "." + (fileType || "txt"), fileString, options, file.write);
+            fileString = fileString.replace(/\[title\]/, files.pages[fileName].title);
+            fileString = fileString.replace(/\[h1\]/, files.pages[fileName].h1);
+
+            fileString = html.doctype + util.indentHTML(fileString);
+
+            fs.writeFile(fileName + ".html", fileString, options, files.write);
+        },
+        handleExistsError : function (error) {
+            var fileNameArray,
+                fileName;
+
+            if (error && (error.code === "ENOENT")) {
+                fileNameArray = error.path.match(/\w+\.html$/);
+                fileName = fileNameArray[0].replace(/\.html$/, "");
+
+                files.createHTML(fileName);
+            }
+        },
+        exists : function (fileName) {
+            var filePath = path.join(process.cwd(), fileName + ".html");
+            
+            fs.readFile(filePath, files.handleExistsError);
+        },
+        create : function () {
+            var k,
+                pages = files.pages;
+
+            for (k in pages) {
+                if (pages.hasOwnProperty(k)) {
+                    files.exists(k);
+                }
+            }
         }
     };
 
@@ -131,6 +190,9 @@
     };
 
     setup = {
+        files : {
+            init : files.create
+        },
         webconfig : {
             load : function (data) {
                 webconfig = JSON.parse(data.toString());
@@ -185,7 +247,7 @@
             }
         },
         init : function () {
-            file.create("404", "html");
+            setup.files.init();
             setup.webconfig.init();
         }
     };
