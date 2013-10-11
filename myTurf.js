@@ -140,8 +140,7 @@
                     encoding: "utf8"
                 },
                 html = files.types.html,
-                fileString = html.doc,
-                filePath = path.join(process.cwd(), fileName + ".html");
+                fileString = html.doc;
 
             fileString = fileString.replace(/\[title\]/, files.pages[fileName].title);
             fileString = fileString.replace(/\[h1\]/, files.pages[fileName].h1);
