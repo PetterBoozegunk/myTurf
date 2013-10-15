@@ -174,22 +174,24 @@
                     },
                     dataStr = data.replace(/[\n\r]/g, ""),
                     hostname = dataStr.split(":")[0] || "localhost",
-                    port = dataStr.split(":")[1] || 80,
-                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + ',"defaultfile":"404.html"}',
+                    port = dataStr.split(":")[1] || "8080",
+                    webconfigStr = '{"hostname":"' + hostname + '","port":"' + port + '"}',
                     fileString = util.indentJSON(webconfigStr);
 
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
             },
             setNameAndPort : function () {
                 sys.puts("Choose the name and port for the server. ex: development.local:333 or punk.rock:666");
-                sys.puts("Or hit enter/return to use \"localhost:80\"");
+                sys.puts("Or hit enter/return to use \"localhost:8080\"");
                 process.stdin.resume();
                 process.stdin.setEncoding("utf8");
 
                 process.stdin.on("data", setup.webconfig.create);
             },
             handleInitResponseError : function (error) {
-                throw error;
+                if (error) {
+                    throw error;
+                }
             },
             handleInitResponse : function (error, data) {
                 var errorHandler;
