@@ -8,9 +8,9 @@
         webconfig,
         server,
         sys = require("sys"),
+        http = require("http"),
         path = require("path"),
-        fs = require("fs"),
-        http = require("http");
+        fs = require("fs");
 
     util = {
         trim : function (str) {
@@ -69,10 +69,9 @@
             for (k = j; k < l; k += 1) {
                 if ((/(\s|>|\/)/).test(trimString[k])) {
                     break;
-                } else {
-                    tagName += trimString[k];
                 }
 
+                tagName += trimString[k];
             }
 
             return tagName;
@@ -117,88 +116,44 @@
         pages : {
             "404" : {
                 "title" : "404",
-                "h1" : "404"
+                "body" : "<h1>404</h1>"
             },
             "500" : {
                 "title" : "500",
-                "h1" : "500"
+                "body" : "<h1>500</h1>"
             }
         },
         types : {
             "html" : {
                 doctype : "<!DOCTYPE html>\n",
-                doc : "<html><head><meta charset=\"utf-8\"><title>[title]</title></head><body><h1>[h1]</h1></body></html>"
+                doc : "<html><head><meta charset=\"utf-8\"><title>[title]</title></head><body>[body]</body></html>"
             }
         },
-//        write : function (error) {
-//            if (error) {
-//                throw error;
-//            }
-//        },
-        createHTML : function (fileName) {
-            var options = {
-                    encoding: "utf8"
-                },
-                html = files.types.html,
+        getHTML : function (pageObject) {
+            var html = files.types.html,
                 fileString = html.doc;
 
-            fileString = fileString.replace(/\[title\]/, files.pages[fileName].title);
-            fileString = fileString.replace(/\[h1\]/, files.pages[fileName].h1);
+            fileString = fileString.replace(/\[title\]/, (pageObject.title || ""));
+            fileString = fileString.replace(/\[body\]/, (pageObject.body || ""));
 
             fileString = html.doctype + util.indentHTML(fileString);
 
-//            fs.writeFile(fileName + ".html", fileString, options, files.write);
-            fs.writeFile(fileName + ".html", fileString, options, function (error) {
-                if (error) {
-                    throw error;
-                }
-
-                sys.puts(fileName + ".html was created");
-            });
-        },
-        handleExistsError : function (error) {
-            var fileNameArray,
-                fileName;
-
-            if (error && (error.code === "ENOENT")) {
-                fileNameArray = error.path.match(/\w+\.html$/);
-                fileName = fileNameArray[0].replace(/\.html$/, "");
-
-                files.createHTML(fileName);
-            }
-        },
-        exists : function (fileName) {
-            var filePath = path.join(process.cwd(), fileName + ".html");
-
-            fs.readFile(filePath, files.handleExistsError);
-        },
-        create : function () {
-            var k,
-                pages = files.pages;
-
-            for (k in pages) {
-                if (pages.hasOwnProperty(k)) {
-                    files.exists(k);
-                }
-            }
+            return fileString;
         }
     };
 
     server = {
-        create : function (request, response) {
-            console.log(request + "\n" + response);
+        listener : function (request, response) {
+            console.log(request, response);
         },
         addListener : function (webConfig) {
-            http.createServer(server.create).listen(webConfig.port, webConfig.hostname);
+            http.createServer(server.listener).listen(webConfig.port, webConfig.hostname);
 
             sys.puts("Server Running on http://" + webConfig.hostname + ":" + webConfig.port);
         }
     };
 
     setup = {
-        files : {
-            init : files.create
-        },
         webconfig : {
             load : function (data) {
                 webconfig = JSON.parse(data.toString());
@@ -220,7 +175,7 @@
                     dataStr = data.replace(/[\n\r]/g, ""),
                     hostname = dataStr.split(":")[0] || "localhost",
                     port = dataStr.split(":")[1] || 80,
-                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + '}',
+                    webconfigStr = '{"hostname":"' + hostname + '","port":' + port + ',"defaultfile":"404.html"}',
                     fileString = util.indentJSON(webconfigStr);
 
                 fs.writeFile("webconfig.json", fileString, options, setup.webconfig.write);
@@ -253,7 +208,6 @@
             }
         },
         init : function () {
-            setup.files.init();
             setup.webconfig.init();
         }
     };
